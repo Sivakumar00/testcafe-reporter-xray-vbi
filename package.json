@@ -2,7 +2,7 @@
   "name": "testcafe-reporter-xray-vbi",
   "version": "1.0.0",
   "description": "xray-json TestCafe reporter plugin.",
-  "repository": "https://github.com/s1mob/testcafe-reporter-xray-json",
+  "repository": "https://github.com/s1mob/testcafe-reporter-xray-vbi",
   "author": {
     "name": "sivakumar",
     "email": "sivadot007@gmail.com",
