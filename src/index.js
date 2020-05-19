@@ -56,7 +56,7 @@ module.exports = function () {
                 testStatus = 'PASSED';
             }
             currentTest.comment = testStatus == "FAILED" 
-                                    ? JSON.stringify(meta.comment) ? "Console Logs: \n"+JSON.stringify(meta.comment) : "Execution Failed" 
+                                    ? "Execution Failed" 
                                     : "Execution Passed";
             currentTest.status = testStatus;
             currentTest.finish = testFinishDate;
