@@ -2,7 +2,6 @@ var fs = require('fs');
 let testStartDate = new Date('1970-01-01');
 
 let currentInfo = {};
-
 let currentTest = {};
 
 module.exports = function () {
@@ -37,16 +36,13 @@ module.exports = function () {
             this.addMetadata(meta, currentTest);
             let testStatus = 'UNDEFINED';
             const currentEvidences = {};
-            console.log(JSON.stringify(meta.comment));
             const testFinishDate = new Date(testStartDate.getTime() + testRunInfo.durationMs).toISOString();
 
             if (!testRunInfo.skipped && JSON.stringify(testRunInfo.errs).replace(/[[\]]/g, '').length > 0) {
                 testStatus = 'FAILED';
                 currentTest.evidences = [];
-                console.log(JSON.stringify(testRunInfo));
 
                 for (var i in testRunInfo.screenshots) {
-                    console.log("screen shot ",JSON.stringify(testRunInfo.screenshots[i]));
                     var bitmap = testRunInfo.screenshots[i].screenshotPath ? fs.readFileSync(testRunInfo.screenshots[i].screenshotPath) : null;
                     currentEvidences.data = await this.base64Encode(bitmap);
                     currentEvidences.filename = testRunInfo.screenshots[i].screenshotPath;
