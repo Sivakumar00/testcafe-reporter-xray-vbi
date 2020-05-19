@@ -1,65 +1,110 @@
+var fs = require('fs');
+let testStartDate = new Date('1970-01-01');
+
+let currentInfo = {};
+
 let currentTest = {};
 
 module.exports = function () {
     return {
-        xrayReport: {
-            info:  {},
+        report: {
+            info: {},
             tests: []
         },
 
-        noColors: true,
-
-        reportTaskStart (startTime, userAgents/*, testCount*/) {
-            this.xrayReport.info.testPlanKey = '';
-            this.xrayReport.info.summary = 'Execution of automated tests through testCafe';
-            this.xrayReport.info.description = 'This execution is automatically generated using our Framework';
-            this.xrayReport.info.testEnvironments = userAgents;
-            this.xrayReport.info.startDate = this.moment(startTime).format('YYYY-MM-DDThh:mm:ssZ');
+        async reportTaskStart(startTime, userAgents) {
+            currentInfo = {
+                startDate:  startTime,
+            };
         },
 
-        reportFixtureStart ( /*name, path */) {
-            // throw new Error('Not implemented');
+        async reportFixtureStart(name, path, meta) {
+            await this.addMetadata(meta, currentInfo);
+            if (currentInfo.testExecutionKey && meta.testExecutionKey) {
+                this.report.testExecutionKey = meta.testExecutionKey;
+                delete currentInfo.testExecutionKey;
+            }
         },
 
-        async reportTestStart ( /*name, testMeta*/) {
-            // NOTE: This method is optional.
+        async reportTestStart( /* name, meta */) {
+            testStartDate = new Date();
+            currentTest = {
+                start: new Date(testStartDate).toISOString()
+            };
         },
 
-        async reportTestDone (name, testRunInfo) {
+        async reportTestDone(name, testRunInfo, meta) {
+            this.addMetadata(meta, currentTest);
             let testStatus = 'UNDEFINED';
             const currentEvidences = {};
+            console.log(JSON.stringify(meta.comment));
+            const testFinishDate = new Date(testStartDate.getTime() + testRunInfo.durationMs).toISOString();
 
-            const testStartDate = new Date();
-
-            currentTest.testKey = ''; //still didn't find a way to get testKey so it stays empty for now
             if (!testRunInfo.skipped && JSON.stringify(testRunInfo.errs).replace(/[[\]]/g, '').length > 0) {
-                testStatus = 'FAIL';
+                testStatus = 'FAILED';
                 currentTest.evidences = [];
+                console.log(JSON.stringify(testRunInfo));
 
                 for (var i in testRunInfo.screenshots) {
-                    currentEvidences.data = await this.base64Encode(testRunInfo.screenshots[i].screenshotPath);
+                    console.log("screen shot ",JSON.stringify(testRunInfo.screenshots[i]));
+                    var bitmap = testRunInfo.screenshots[i].screenshotPath ? fs.readFileSync(testRunInfo.screenshots[i].screenshotPath) : null;
+                    currentEvidences.data = await this.base64Encode(bitmap);
                     currentEvidences.filename = testRunInfo.screenshots[i].screenshotPath;
                     currentEvidences.contentType = 'image/png';
                     currentTest.evidences.push(JSON.parse(JSON.stringify(currentEvidences)));
+                    this.deleteUnusefulTestRunInfo(testRunInfo);
                 }
-                testRunInfo = 'Execution failed.';
             }
             else {
                 testRunInfo = 'Test executed without any error';
-                testStatus = 'PASS';
+                testStatus = 'PASSED';
             }
-            currentTest.comment = testRunInfo;
+            currentTest.comment = testStatus == "FAILED" 
+                                    ? JSON.stringify(meta.comment) ? "Console Logs: \n"+JSON.stringify(meta.comment) : "Execution Failed" 
+                                    : "Execution Passed";
             currentTest.status = testStatus;
-            currentTest.start =  this.moment(testStartDate).format('YYYY-MM-DDThh:mm:ssZ');
-            currentTest.finish = this.moment(testStartDate).add('ms', testRunInfo.durationMs).format('YYYY-MM-DDThh:mm:ssZ');
-            delete currentTest.comment.errs;
-            this.xrayReport.tests.push(JSON.parse(JSON.stringify(currentTest)));
+            currentTest.finish = testFinishDate;
+            this.report.tests.push(currentTest);
+
             currentTest = {};
         },
 
-        reportTaskDone (endTime /*, passed, warnings*/) {
-            this.xrayReport.info.finishDate = this.moment(endTime).format('YYYY-MM-DDThh:mm:ssZ');
-            this.write(JSON.stringify(this.xrayReport, null, 1));
+        async reportTaskDone(endTime) {
+            currentInfo.finishDate = endTime;
+            this.report.info = currentInfo;
+            fs.writeFile(`./Outputs/${this.report.info.testPlanKey}-${endTime}.json`, JSON.stringify(this.report), 'utf8', function (err) {
+                if (err) {
+                    console.log("An error occured while writing JSON Object to File.");
+                    return console.log(err);
+                }
+
+                console.log("JSON file has been saved.");
+            });
+            //this.write(JSON.stringify(this.report, null, 2));
+        },
+
+        async base64Encode(file) {
+            const base64 = Buffer.from(file).toString('base64');
+            return base64;
+        },
+
+        async deleteUnusefulTestRunInfo(testRunInfo) {
+            for (var i in testRunInfo.errs) {
+                if ('stackFrames' in testRunInfo.errs[i].callsite) delete testRunInfo.errs[i].callsite.stackFrames;
+                if ('isV8Frames' in testRunInfo.errs[i].callsite) delete testRunInfo.errs[i].callsite.isV8Frames;
+            }
+
+            delete testRunInfo.screenshots;
+            delete testRunInfo.screenshotPath;
+            delete testRunInfo.quarantine;
+            delete testRunInfo.durationMs;
+            delete testRunInfo.durationMs;
+            delete testRunInfo.warnings;
+            delete testRunInfo.skipped;
+        },
+
+        async addMetadata(meta, object) {
+            for (var key in meta) object[key] = meta[key];
         }
     };
 };
