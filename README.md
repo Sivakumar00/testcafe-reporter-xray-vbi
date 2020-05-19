@@ -1,5 +1,4 @@
 # testcafe-reporter-xray-vbi
-[![Build Status](https://travis-ci.org/s1mob/testcafe-reporter-xray-json.svg)](https://travis-ci.org/s1mob/testcafe-reporter-xray-json)
 
 This is the **xray-vbi** reporter plugin for [TestCafe](http://devexpress.github.io/testcafe).
 
